@@ -1,0 +1,29 @@
+default:
+  image: debian:bullseye-slim
+
+stages:
+  - backup
+
+backup_hosts:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: always
+    - when: never
+  before_script:
+    - apt-get -qq -y update
+    - apt-get -qq -y install python3 python3-pip
+    - apt-get -qq -y install git
+    - pip3 install -r requirements.txt
+  script:
+    - python3 backup_juniper.py
+    - python3 backup_juniper_interfaces_terse.py
+    - python3 get_ospf_neighbors_juniper.py
+    - python3 get_bgp_summary.py
+    - git config user.email "python@zillowgroup.net"
+    - git config user.name "ci-bot"
+    - git remote set-url gitlab_origin #url link
+    - git add .
+    - git commit -m "push back from pipeline"
+    - git push gitlab_origin HEAD:main -o ci.skip # prevent triggering pipeline again
+    - python3 send_diffs.py
+  stage: backup
